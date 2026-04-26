@@ -44,6 +44,9 @@ class Den(SQLModel, table=True):
     status: Optional[str] = None     # "good" | "checkin" | "help"
     notes: Optional[str] = None
     advancements_current: Optional[bool] = None
+    leader_name: Optional[str] = None
+    asst_leader_name: Optional[str] = None
+    asst_leader_email: Optional[str] = None
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     updated_by: Optional[str] = None
 

@@ -66,6 +66,32 @@ export default function Dens() {
               {den.advancements_current ? 'Yes ✓' : 'No'}
             </button>
           </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 8 }}>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Den Leader</label>
+              <input type="text" placeholder="Name"
+                defaultValue={den.leader_name || ''}
+                onBlur={e => { if (e.target.value !== (den.leader_name || '')) update(den, { leader_name: e.target.value }) }}
+                style={{ width: '100%', padding: '5px 8px', borderRadius: 6, border: '0.5px solid var(--border)',
+                  background: 'var(--bg)', color: 'var(--text)', fontSize: 13, boxSizing: 'border-box' }} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Asst. Den Leader</label>
+              <input type="text" placeholder="Name"
+                defaultValue={den.asst_leader_name || ''}
+                onBlur={e => { if (e.target.value !== (den.asst_leader_name || '')) update(den, { asst_leader_name: e.target.value }) }}
+                style={{ width: '100%', padding: '5px 8px', borderRadius: 6, border: '0.5px solid var(--border)',
+                  background: 'var(--bg)', color: 'var(--text)', fontSize: 13, boxSizing: 'border-box' }} />
+            </div>
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Asst. Leader Email</label>
+            <input type="email" placeholder="email@example.com"
+              defaultValue={den.asst_leader_email || ''}
+              onBlur={e => { if (e.target.value !== (den.asst_leader_email || '')) update(den, { asst_leader_email: e.target.value }) }}
+              style={{ width: '100%', padding: '5px 8px', borderRadius: 6, border: '0.5px solid var(--border)',
+                background: 'var(--bg)', color: 'var(--text)', fontSize: 13, boxSizing: 'border-box' }} />
+          </div>
           <textarea rows={2} placeholder="Notes…"
             defaultValue={den.notes || ''}
             onBlur={e => { if (e.target.value !== (den.notes || '')) update(den, { notes: e.target.value }) }}

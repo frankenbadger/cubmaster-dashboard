@@ -14,6 +14,9 @@ class DenUpdate(BaseModel):
     status: Optional[str] = None       # "good" | "checkin" | "help" | None
     notes: Optional[str] = None
     advancements_current: Optional[bool] = None
+    leader_name: Optional[str] = None
+    asst_leader_name: Optional[str] = None
+    asst_leader_email: Optional[str] = None
 
 
 @router.get("/")
@@ -32,6 +35,12 @@ def update_den(den_id: int, update: DenUpdate, session: Session = Depends(get_se
         den.notes = update.notes
     if update.advancements_current is not None:
         den.advancements_current = update.advancements_current
+    if update.leader_name is not None:
+        den.leader_name = update.leader_name
+    if update.asst_leader_name is not None:
+        den.asst_leader_name = update.asst_leader_name
+    if update.asst_leader_email is not None:
+        den.asst_leader_email = update.asst_leader_email
     den.updated_at = datetime.utcnow()
     den.updated_by = current_user.username
     session.add(den)
