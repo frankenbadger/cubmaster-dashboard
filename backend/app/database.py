@@ -8,7 +8,24 @@ engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 
 def init_db():
     SQLModel.metadata.create_all(engine)
+    _migrate_db()
     _seed_dens()
+
+def _migrate_db():
+    """Add columns that may be missing from databases created before a schema change."""
+    from sqlalchemy import text
+    migrations = [
+        "ALTER TABLE den ADD COLUMN leader_name TEXT",
+        "ALTER TABLE den ADD COLUMN asst_leader_name TEXT",
+        "ALTER TABLE den ADD COLUMN asst_leader_email TEXT",
+    ]
+    with engine.connect() as conn:
+        for sql in migrations:
+            try:
+                conn.execute(text(sql))
+                conn.commit()
+            except Exception:
+                pass  # column already exists
 
 def get_session():
     with Session(engine) as session:
