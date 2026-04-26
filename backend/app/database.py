@@ -15,6 +15,7 @@ def _migrate_db():
     """Add columns that may be missing from databases created before a schema change."""
     from sqlalchemy import text
     migrations = [
+        "ALTER TABLE den ADD COLUMN den_number TEXT",
         "ALTER TABLE den ADD COLUMN leader_name TEXT",
         "ALTER TABLE den ADD COLUMN asst_leader_name TEXT",
         "ALTER TABLE den ADD COLUMN asst_leader_email TEXT",
@@ -61,6 +62,7 @@ class Den(SQLModel, table=True):
     status: Optional[str] = None     # "good" | "checkin" | "help"
     notes: Optional[str] = None
     advancements_current: Optional[bool] = None
+    den_number: Optional[str] = None
     leader_name: Optional[str] = None
     asst_leader_name: Optional[str] = None
     asst_leader_email: Optional[str] = None

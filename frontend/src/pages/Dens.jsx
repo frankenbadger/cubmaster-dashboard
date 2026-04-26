@@ -44,7 +44,15 @@ export default function Dens() {
       {dens.map(den => (
         <div key={den.id} className="card" style={{ marginBottom: '0.75rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <span style={{ fontWeight: 500, fontSize: 15 }}>{den.name}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontWeight: 500, fontSize: 15 }}>{den.name}</span>
+              <span style={{ color: 'var(--text-secondary)', fontSize: 14 }}>–</span>
+              <input type="text" placeholder="Den #"
+                defaultValue={den.den_number || ''}
+                onBlur={e => { if (e.target.value !== (den.den_number || '')) update(den, { den_number: e.target.value }) }}
+                style={{ width: 70, padding: '2px 6px', borderRadius: 5, border: '0.5px solid var(--border)',
+                  background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 500 }} />
+            </div>
             {saving[den.id] && <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Saving…</span>}
           </div>
           <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>

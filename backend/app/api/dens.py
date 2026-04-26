@@ -14,6 +14,7 @@ class DenUpdate(BaseModel):
     status: Optional[str] = None       # "good" | "checkin" | "help" | None
     notes: Optional[str] = None
     advancements_current: Optional[bool] = None
+    den_number: Optional[str] = None
     leader_name: Optional[str] = None
     asst_leader_name: Optional[str] = None
 
@@ -34,6 +35,8 @@ def update_den(den_id: int, update: DenUpdate, session: Session = Depends(get_se
         den.notes = update.notes
     if update.advancements_current is not None:
         den.advancements_current = update.advancements_current
+    if update.den_number is not None:
+        den.den_number = update.den_number
     if update.leader_name is not None:
         den.leader_name = update.leader_name
     if update.asst_leader_name is not None:
