@@ -15,7 +15,9 @@ class DenUpdate(BaseModel):
     notes: Optional[str] = None
     advancements_current: Optional[bool] = None
     den_number: Optional[str] = None
+    scout_count: Optional[int] = None
     leader_name: Optional[str] = None
+    leader_email: Optional[str] = None
     asst_leader_name: Optional[str] = None
 
 
@@ -37,8 +39,12 @@ def update_den(den_id: int, update: DenUpdate, session: Session = Depends(get_se
         den.advancements_current = update.advancements_current
     if update.den_number is not None:
         den.den_number = update.den_number
+    if update.scout_count is not None:
+        den.scout_count = update.scout_count
     if update.leader_name is not None:
         den.leader_name = update.leader_name
+    if update.leader_email is not None:
+        den.leader_email = update.leader_email
     if update.asst_leader_name is not None:
         den.asst_leader_name = update.asst_leader_name
     den.updated_at = datetime.utcnow()

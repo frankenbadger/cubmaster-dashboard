@@ -44,7 +44,7 @@ export default function Dens() {
       {dens.map(den => (
         <div key={den.id} className="card" style={{ marginBottom: '0.75rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
               <span style={{ fontWeight: 500, fontSize: 15 }}>{den.name}</span>
               <span style={{ color: 'var(--text-secondary)', fontSize: 14 }}>– Den #</span>
               <input type="text" placeholder="–"
@@ -52,6 +52,13 @@ export default function Dens() {
                 onBlur={e => { if (e.target.value !== (den.den_number || '')) update(den, { den_number: e.target.value }) }}
                 style={{ width: 40, padding: '2px 6px', borderRadius: 5, border: '0.5px solid var(--border)',
                   background: 'var(--bg)', color: 'var(--text)', fontSize: 14, fontWeight: 500 }} />
+              <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>·</span>
+              <input type="number" min={0} placeholder="0"
+                defaultValue={den.scout_count ?? ''}
+                onBlur={e => { const v = e.target.value === '' ? null : parseInt(e.target.value); if (v !== den.scout_count) update(den, { scout_count: v }) }}
+                style={{ width: 44, padding: '2px 6px', borderRadius: 5, border: '0.5px solid var(--border)',
+                  background: 'var(--bg)', color: 'var(--text)', fontSize: 13 }} />
+              <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>scouts</span>
             </div>
             {saving[den.id] && <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>Saving…</span>}
           </div>
@@ -74,7 +81,7 @@ export default function Dens() {
               {den.advancements_current ? 'Yes ✓' : 'No'}
             </button>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 6 }}>
             <div>
               <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Den Leader</label>
               <input type="text" placeholder="Name"
@@ -91,6 +98,14 @@ export default function Dens() {
                 style={{ width: '100%', padding: '5px 8px', borderRadius: 6, border: '0.5px solid var(--border)',
                   background: 'var(--bg)', color: 'var(--text)', fontSize: 13, boxSizing: 'border-box' }} />
             </div>
+          </div>
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Den Leader Email</label>
+            <input type="email" placeholder="email@example.com"
+              defaultValue={den.leader_email || ''}
+              onBlur={e => { if (e.target.value !== (den.leader_email || '')) update(den, { leader_email: e.target.value }) }}
+              style={{ width: '100%', padding: '5px 8px', borderRadius: 6, border: '0.5px solid var(--border)',
+                background: 'var(--bg)', color: 'var(--text)', fontSize: 13, boxSizing: 'border-box' }} />
           </div>
           <textarea rows={2} placeholder="Notes…"
             defaultValue={den.notes || ''}

@@ -8,6 +8,8 @@ import Dens from './pages/Dens'
 import Report from './pages/Report'
 import Agenda from './pages/Agenda'
 import Calendar from './pages/Calendar'
+import Contacts from './pages/Contacts'
+import Users from './pages/Users'
 import Layout from './components/Layout'
 import './index.css'
 
@@ -27,6 +29,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="report" element={<Report />} />
           <Route path="agenda" element={<Agenda />} />
           <Route path="calendar" element={<Calendar />} />
+          <Route path="contacts" element={<Contacts />} />
+          <Route path="users" element={<Users />} />
         </Route>
       </Routes>
     </BrowserRouter>

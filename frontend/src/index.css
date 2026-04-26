@@ -41,3 +41,69 @@ textarea { resize: vertical; }
 .status-good    { color: #2E7D32; background: #EAF3DE; border-color: #C0DD97; }
 .status-checkin { color: #E65100; background: #FFF3E0; border-color: #FFCC80; }
 .status-help    { color: #B71C1C; background: #FFEBEE; border-color: #FFCDD2; }
+
+/* ── Header / Nav ─────────────────────────────────────────────────────────── */
+
+.site-header {
+  background: var(--navy);
+  color: white;
+  padding: 0 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 52px;
+  flex-wrap: wrap;
+}
+
+.site-nav {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.site-nav::-webkit-scrollbar { display: none; }
+
+.site-username {
+  font-size: 12px;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .site-header { padding: 6px 12px; gap: 8px; }
+  .site-nav { flex: 0 0 100%; padding-bottom: 4px; order: 3; }
+  .site-username { display: none; }
+}
+
+/* ── Print styles ─────────────────────────────────────────────────────────── */
+
+.no-print { }
+.print-only { display: none; }
+
+@media print {
+  .site-header { display: none; }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+
+  body { background: white; color: black; font-size: 12pt; }
+  main { padding: 0 !important; max-width: 100% !important; }
+
+  .card {
+    border: 1pt solid #ccc;
+    border-radius: 0;
+    box-shadow: none;
+    break-inside: avoid;
+    margin-bottom: 12pt;
+  }
+
+  input, textarea, select {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    font-size: 11pt;
+  }
+
+  button { display: none !important; }
+}

@@ -1,7 +1,7 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from sqlmodel import Session, select
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 import httpx
 import os
 import logging
@@ -9,6 +9,11 @@ import logging
 from .database import engine, CalendarEvent
 
 logger = logging.getLogger(__name__)
+
+last_ical_sync: datetime | None = None
+
+def get_last_sync() -> datetime | None:
+    return last_ical_sync
 
 
 def poll_ical():
@@ -59,6 +64,8 @@ def poll_ical():
                     ))
             session.commit()
         logger.info("iCal sync complete")
+        global last_ical_sync
+        last_ical_sync = datetime.utcnow()
     except Exception as e:
         logger.error(f"iCal sync failed: {e}")
 
