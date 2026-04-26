@@ -16,7 +16,6 @@ class DenUpdate(BaseModel):
     advancements_current: Optional[bool] = None
     leader_name: Optional[str] = None
     asst_leader_name: Optional[str] = None
-    asst_leader_email: Optional[str] = None
 
 
 @router.get("/")
@@ -39,8 +38,6 @@ def update_den(den_id: int, update: DenUpdate, session: Session = Depends(get_se
         den.leader_name = update.leader_name
     if update.asst_leader_name is not None:
         den.asst_leader_name = update.asst_leader_name
-    if update.asst_leader_email is not None:
-        den.asst_leader_email = update.asst_leader_email
     den.updated_at = datetime.utcnow()
     den.updated_by = current_user.username
     session.add(den)

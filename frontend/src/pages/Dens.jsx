@@ -84,14 +84,6 @@ export default function Dens() {
                   background: 'var(--bg)', color: 'var(--text)', fontSize: 13, boxSizing: 'border-box' }} />
             </div>
           </div>
-          <div style={{ marginBottom: 8 }}>
-            <label style={{ fontSize: 11, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>Asst. Leader Email</label>
-            <input type="email" placeholder="email@example.com"
-              defaultValue={den.asst_leader_email || ''}
-              onBlur={e => { if (e.target.value !== (den.asst_leader_email || '')) update(den, { asst_leader_email: e.target.value }) }}
-              style={{ width: '100%', padding: '5px 8px', borderRadius: 6, border: '0.5px solid var(--border)',
-                background: 'var(--bg)', color: 'var(--text)', fontSize: 13, boxSizing: 'border-box' }} />
-          </div>
           <textarea rows={2} placeholder="Notes…"
             defaultValue={den.notes || ''}
             onBlur={e => { if (e.target.value !== (den.notes || '')) update(den, { notes: e.target.value }) }}

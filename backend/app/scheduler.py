@@ -16,10 +16,12 @@ def poll_ical():
     ical_url = os.getenv("ICAL_URL", "")
     if not ical_url:
         return
+    # webcal:// is http/https under a different scheme name
+    ical_url = ical_url.replace("webcal://", "https://", 1)
 
     try:
         from icalendar import Calendar
-        response = httpx.get(ical_url, timeout=15)
+        response = httpx.get(ical_url, timeout=15, follow_redirects=True)
         response.raise_for_status()
         cal = Calendar.from_ical(response.content)
 
