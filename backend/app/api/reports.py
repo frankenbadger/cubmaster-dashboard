@@ -27,8 +27,9 @@ class ReportUpsert(BaseModel):
     upcoming_meeting_program: Optional[str] = None
     upcoming_meeting_agenda: Optional[str] = None
     upcoming_events: Optional[str] = None
-    den_updates: Optional[str] = None   # JSON string
+    den_updates: Optional[str] = None      # JSON string
     notes: Optional[str] = None
+    extra_sections: Optional[str] = None  # JSON string: [{title, content}]
 
 
 MONTH_NAMES = ["January","February","March","April","May","June",
@@ -127,6 +128,19 @@ def download_report(year: int, month: int, session: Session = Depends(get_sessio
         doc.add_paragraph(report.notes)
     else:
         doc.add_paragraph("")
+
+    # Extra custom sections
+    if report and report.extra_sections:
+        try:
+            extras = json.loads(report.extra_sections)
+        except Exception:
+            extras = []
+        for i, section in enumerate(extras, start=6):
+            title = section.get("title") or f"Additional Section {i - 5}"
+            content = section.get("content") or ""
+            doc.add_heading(f"{i}. {title}", 1)
+            if content:
+                _add_bullets(doc, None, content)
 
     buf = io.BytesIO()
     doc.save(buf)

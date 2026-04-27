@@ -21,6 +21,7 @@ def _migrate_db():
         "ALTER TABLE den ADD COLUMN leader_email TEXT",
         "ALTER TABLE den ADD COLUMN asst_leader_name TEXT",
         "ALTER TABLE den ADD COLUMN asst_leader_email TEXT",
+        "ALTER TABLE monthlyreport ADD COLUMN extra_sections TEXT",
     ]
     with engine.connect() as conn:
         for sql in migrations:
@@ -174,6 +175,8 @@ class MonthlyReport(SQLModel, table=True):
     den_updates: Optional[str] = None
     # Section 5 — general notes
     notes: Optional[str] = None
+    # Extra custom sections (JSON string: [{title, content}, ...])
+    extra_sections: Optional[str] = None
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     updated_by: Optional[str] = None
 

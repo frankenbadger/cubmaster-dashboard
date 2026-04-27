@@ -12,6 +12,7 @@ export default function Report() {
   const [month, setMonth] = useState(now.getMonth())
   const [form, setForm]   = useState({})
   const [denUpdates, setDenUpdates] = useState({})
+  const [extraSections, setExtraSections] = useState([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved]   = useState(false)
 
@@ -22,6 +23,7 @@ export default function Report() {
       const { data } = await api.get(`/reports/${year}/${month}`)
       setForm(data)
       setDenUpdates(data.den_updates ? JSON.parse(data.den_updates) : {})
+      setExtraSections(data.extra_sections ? JSON.parse(data.extra_sections) : [])
     } catch {}
   }
 
@@ -36,6 +38,7 @@ export default function Report() {
       await api.put(`/reports/${year}/${month}`, {
         year, month, ...form,
         den_updates: JSON.stringify(denUpdates),
+        extra_sections: JSON.stringify(extraSections),
       })
       setSaved(true)
     } finally { setSaving(false) }
@@ -99,6 +102,44 @@ export default function Report() {
       <Section title="5. Notes">
         <Field label="" value={form.notes} onChange={v => set('notes', v)} multiline rows={5} />
       </Section>
+
+      {extraSections.map((sec, i) => (
+        <div key={i} className="card" style={{ position: 'relative' }}>
+          <button
+            onClick={() => { setExtraSections(s => s.filter((_, idx) => idx !== i)); setSaved(false) }}
+            title="Remove section"
+            style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none',
+              cursor: 'pointer', fontSize: 16, color: 'var(--text-secondary)', lineHeight: 1 }}>
+            ×
+          </button>
+          <div style={{ marginBottom: 8 }}>
+            <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--text-secondary)', display: 'block', marginBottom: 3 }}>
+              Section {i + 6} — Title
+            </label>
+            <input
+              value={sec.title}
+              onChange={e => { setExtraSections(s => s.map((x, idx) => idx === i ? { ...x, title: e.target.value } : x)); setSaved(false) }}
+              placeholder="e.g. Pinewood Derby Update"
+              style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '0.5px solid var(--border)', background: 'var(--card-bg)', color: 'var(--text)', marginBottom: 10 }}
+            />
+          </div>
+          <textarea
+            rows={4}
+            value={sec.content}
+            onChange={e => { setExtraSections(s => s.map((x, idx) => idx === i ? { ...x, content: e.target.value } : x)); setSaved(false) }}
+            placeholder="One item per line…"
+            style={{ width: '100%', padding: '6px 10px', borderRadius: 6, border: '0.5px solid var(--border)', background: 'var(--card-bg)', color: 'var(--text)' }}
+          />
+        </div>
+      ))}
+
+      <button
+        onClick={() => { setExtraSections(s => [...s, { title: '', content: '' }]); setSaved(false) }}
+        style={{ width: '100%', padding: '10px', borderRadius: 8, border: '1.5px dashed var(--border)',
+          background: 'transparent', color: 'var(--text-secondary)', fontSize: 13, cursor: 'pointer',
+          marginBottom: '1rem' }}>
+        + Add Section
+      </button>
     </div>
   )
 }
