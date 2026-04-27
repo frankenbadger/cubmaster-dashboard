@@ -88,6 +88,24 @@ def download_report(year: int, month: int, session: Session = Depends(get_sessio
     sub = doc.add_paragraph(f"Pack {PACK_NUMBER} · {PACK_LOCATION} · {MONTH_NAMES[month]} {year}")
     sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
+    # Group extra sections by the fixed section they follow
+    extras_by_pos = {}
+    if report and report.extra_sections:
+        try:
+            for s in json.loads(report.extra_sections):
+                pos = s.get("after", 5)
+                extras_by_pos.setdefault(pos, []).append(s)
+        except Exception:
+            pass
+
+    def add_extras(after):
+        for s in extras_by_pos.get(after, []):
+            title = s.get("title") or "Additional Section"
+            content = s.get("content") or ""
+            doc.add_heading(title, 2)
+            if content:
+                _add_bullets(doc, None, content)
+
     doc.add_heading("1. Monthly Review", 1)
     doc.add_heading("1.1 Last Pack Meeting", 2)
     if report:
@@ -95,15 +113,18 @@ def download_report(year: int, month: int, session: Session = Depends(get_sessio
         _add_field(doc, "Attendance", report.last_meeting_attendance)
         _add_bullets(doc, "Went Well", report.last_meeting_went_well)
         _add_bullets(doc, "Needs Improvement", report.last_meeting_needs_improvement)
+    add_extras(1)
 
     doc.add_heading("2. Upcoming Pack Meeting", 1)
     if report:
         _add_field(doc, "Program", report.upcoming_meeting_program)
         _add_field(doc, "Agenda", report.upcoming_meeting_agenda)
+    add_extras(2)
 
     doc.add_heading("3. Upcoming Events", 1)
     if report and report.upcoming_events:
         _add_bullets(doc, None, report.upcoming_events)
+    add_extras(3)
 
     doc.add_heading("4. Den Updates", 1)
     den_updates = {}
@@ -117,30 +138,19 @@ def download_report(year: int, month: int, session: Session = Depends(get_sessio
         update_text = den_updates.get(den.name, "")
         if den.status:
             status_map = {"good": "On track", "checkin": "Needs check-in", "help": "Help needed"}
-            p = doc.add_paragraph(f"Status: {status_map.get(den.status, den.status)}")
+            doc.add_paragraph(f"Status: {status_map.get(den.status, den.status)}")
         if den.notes:
             doc.add_paragraph(f"Notes: {den.notes}")
         if update_text:
             _add_bullets(doc, None, update_text)
+    add_extras(4)
 
     doc.add_heading("5. Notes", 1)
     if report and report.notes:
         doc.add_paragraph(report.notes)
     else:
         doc.add_paragraph("")
-
-    # Extra custom sections
-    if report and report.extra_sections:
-        try:
-            extras = json.loads(report.extra_sections)
-        except Exception:
-            extras = []
-        for i, section in enumerate(extras, start=6):
-            title = section.get("title") or f"Additional Section {i - 5}"
-            content = section.get("content") or ""
-            doc.add_heading(f"{i}. {title}", 1)
-            if content:
-                _add_bullets(doc, None, content)
+    add_extras(5)
 
     buf = io.BytesIO()
     doc.save(buf)
