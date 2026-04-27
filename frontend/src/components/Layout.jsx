@@ -14,6 +14,8 @@ export default function Layout() {
     { to: '/report',    label: 'Report'    },
     { to: '/calendar',  label: 'Calendar'  },
     { to: '/contacts',  label: 'Contacts'  },
+    { to: '/radar',     label: 'Radar'     },
+    { to: '/docs',      label: 'Docs'      },
     ...(user?.role === 'cubmaster' ? [{ to: '/users', label: 'Users' }] : []),
   ]
 

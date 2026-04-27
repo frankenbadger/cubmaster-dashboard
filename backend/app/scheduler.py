@@ -124,12 +124,24 @@ def _send_reminder_email(event, days_away):
         logger.error(f"Email failed: {e}")
 
 
+def scrape_councils():
+    """Delegate to the council scraper service."""
+    try:
+        from .services.council_scraper import scrape_all_councils
+        scrape_all_councils()
+    except Exception as e:
+        logger.error(f"Council scrape failed: {e}")
+
+
 def start_scheduler():
     poll_interval = int(os.getenv("ICAL_POLL_INTERVAL", 120))
+    scrape_hours = int(os.getenv("COUNCIL_SCRAPE_INTERVAL_HOURS", 24))
     scheduler = BackgroundScheduler()
     scheduler.add_job(poll_ical, IntervalTrigger(minutes=poll_interval), id="ical_poll", replace_existing=True)
     scheduler.add_job(send_reminders, IntervalTrigger(hours=12), id="reminders", replace_existing=True)
+    scheduler.add_job(scrape_councils, IntervalTrigger(hours=scrape_hours), id="council_scrape", replace_existing=True)
     scheduler.start()
     logger.info("Scheduler started")
-    # Run once immediately
+    # Run once immediately on startup
     poll_ical()
+    scrape_councils()

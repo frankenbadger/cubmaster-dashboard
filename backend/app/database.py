@@ -189,3 +189,43 @@ class PackMeetingAgenda(SQLModel, table=True):
     notes: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_by: Optional[str] = None
+
+
+class CouncilEvent(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    external_id: str = Field(unique=True, index=True)  # council+title+date slug
+    title: str
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    council: str                          # "JVC" | "Bucktail" | "Laurel Highlands"
+    url: Optional[str] = None
+    description: Optional[str] = None
+    location: Optional[str] = None
+    status: str = Field(default="new")   # "new" | "saved" | "dismissed" | "promoted"
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ParsedDocument(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    filename: str
+    event_name: Optional[str] = None
+    event_type: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    registration_deadline: Optional[date] = None
+    location: Optional[str] = None
+    address: Optional[str] = None
+    cost_scout: Optional[str] = None
+    cost_adult: Optional[str] = None
+    cost_notes: Optional[str] = None
+    contact_name: Optional[str] = None
+    contact_email: Optional[str] = None
+    contact_phone: Optional[str] = None
+    registration_url: Optional[str] = None
+    age_requirements: Optional[str] = None
+    what_to_bring: Optional[str] = None
+    key_notes: Optional[str] = None      # JSON array stored as string
+    family_summary: Optional[str] = None
+    raw_text: Optional[str] = None
+    uploaded_at: datetime = Field(default_factory=datetime.utcnow)
+    uploaded_by: Optional[str] = None

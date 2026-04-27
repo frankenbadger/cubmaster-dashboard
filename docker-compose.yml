@@ -14,6 +14,12 @@ services:
       - SMTP_FROM=${SMTP_FROM}
       - PACK_NUMBER=${PACK_NUMBER:-44}
       - PACK_LOCATION=${PACK_LOCATION:-Philipsburg, PA}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ANTHROPIC_MODEL=${ANTHROPIC_MODEL:-claude-sonnet-4-6}
+      - COUNCIL_SCRAPE_INTERVAL_HOURS=${COUNCIL_SCRAPE_INTERVAL_HOURS:-24}
+      - JVC_CALENDAR_URL=${JVC_CALENDAR_URL:-https://scoutingevent.com/497/Calendar/}
+      - BUCKTAIL_CALENDAR_URL=${BUCKTAIL_CALENDAR_URL:-https://scoutingevent.com/509/Calendar/}
+      - LH_CALENDAR_URL=${LH_CALENDAR_URL:-https://scoutingevent.com/527/Calendar/}
     volumes:
       - cubmaster-data:/data
     ports:

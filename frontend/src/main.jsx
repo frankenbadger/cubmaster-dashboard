@@ -10,6 +10,8 @@ import Agenda from './pages/Agenda'
 import Calendar from './pages/Calendar'
 import Contacts from './pages/Contacts'
 import Users from './pages/Users'
+import CouncilRadar from './pages/CouncilRadar'
+import Documents from './pages/Documents'
 import Layout from './components/Layout'
 import './index.css'
 
@@ -30,6 +32,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="agenda" element={<Agenda />} />
           <Route path="calendar" element={<Calendar />} />
           <Route path="contacts" element={<Contacts />} />
+          <Route path="radar" element={<CouncilRadar />} />
+          <Route path="docs" element={<Documents />} />
           <Route path="users" element={<Users />} />
         </Route>
       </Routes>
