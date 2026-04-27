@@ -22,6 +22,8 @@ def _migrate_db():
         "ALTER TABLE den ADD COLUMN asst_leader_name TEXT",
         "ALTER TABLE den ADD COLUMN asst_leader_email TEXT",
         "ALTER TABLE monthlyreport ADD COLUMN extra_sections TEXT",
+        "ALTER TABLE monthlyreport ADD COLUMN last_meeting_name TEXT",
+        "ALTER TABLE monthlyreport ADD COLUMN potential_outings TEXT",
     ]
     with engine.connect() as conn:
         for sql in migrations:
@@ -173,10 +175,14 @@ class MonthlyReport(SQLModel, table=True):
     upcoming_events: Optional[str] = None
     # Section 4 — den updates (stored as JSON string)
     den_updates: Optional[str] = None
-    # Section 5 — general notes
+    # Section 1.1 meeting name/theme
+    last_meeting_name: Optional[str] = None
+    # Section 5 — general notes (may have __sections__ prefix for optional sections)
     notes: Optional[str] = None
-    # Extra custom sections (JSON string: [{title, content}, ...])
+    # Extra custom sections — legacy, superseded by __sections__ prefix in notes
     extra_sections: Optional[str] = None
+    # Section 6 — potential outings (JSON array)
+    potential_outings: Optional[str] = None
     updated_at: datetime = Field(default_factory=datetime.utcnow)
     updated_by: Optional[str] = None
 
