@@ -78,6 +78,11 @@ def _scrape_scoutingevent(url: str, council_name: str, base_url: str) -> list[di
     """
     Scrape a scoutingevent.com council calendar page.
     Returns a list of raw event dicts: {title, start_date, end_date, url, location}.
+
+    scoutingevent.com renders a card-list view. Date headers use the class
+    `cal-event-dark` containing a `cal-date-title` div, followed by sibling
+    `cal-event` rows for each event on that date. Event links use the format
+    `/{council_id}-{event_id}` or `/?OrgKey=...&calendarID=...`.
     """
     try:
         resp = requests.get(url, headers=HEADERS, timeout=20)
@@ -88,56 +93,32 @@ def _scrape_scoutingevent(url: str, council_name: str, base_url: str) -> list[di
 
     soup = BeautifulSoup(resp.content, "html.parser")
     events = []
+    current_date_str: Optional[str] = None
 
-    # scoutingevent.com renders event rows with a consistent structure.
-    # Try the table/row pattern first, then generic link scanning.
-
-    # Strategy 1: look for rows containing event links
-    # The site uses <a> tags with href like /497/event/12345 or /Calendar/event/...
-    event_links = soup.find_all("a", href=re.compile(r"/\d+/|/event/", re.I))
-
-    seen = set()
-    for link in event_links:
-        title = link.get_text(strip=True)
-        href = link.get("href", "")
-
-        if not title or len(title) < 4:
+    # Walk all cal-event rows in document order; dark rows carry the date header.
+    for row in soup.select(".cal-event"):
+        if "cal-event-dark" in row.get("class", []):
+            date_el = row.select_one(".cal-date-title")
+            current_date_str = date_el.get_text(strip=True) if date_el else None
             continue
-        # Skip navigation links
-        if any(skip in title.lower() for skip in ["register", "login", "home", "about", "contact", "calendar"]):
-            continue
-        if title in seen:
-            continue
-        seen.add(title)
 
+        title_el = row.select_one(".cal-title a")
+        if not title_el:
+            continue
+        title = title_el.get_text(strip=True)
+        if not title or len(title) < 3:
+            continue
+
+        href = title_el.get("href", "")
         full_url = href if href.startswith("http") else base_url + href
 
-        # Look for date text near this link (parent container, siblings, next elements)
-        container = link.parent
-        for _ in range(4):  # walk up to 4 levels up
-            if container is None:
-                break
-            text = container.get_text(" ", strip=True)
-            # Look for date-like patterns
-            date_match = re.search(
-                r"(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\w*\.?\s+\d{1,2}"
-                r"(\s*[-–]\s*(?:\w+\.?\s+)?\d{1,2})?,?\s+\d{4}",
-                text,
-                re.IGNORECASE,
-            )
-            if date_match:
-                start_date, end_date = _parse_date_range(date_match.group(0))
-                break
-            container = container.parent
-        else:
-            start_date, end_date = None, None
+        loc_el = row.select_one(".cal-loc-content")
+        location = loc_el.get_text(strip=True) if loc_el else None
+        # Strip "Read more" / map links that bleed into location text
+        if location:
+            location = re.split(r"\s{2,}", location)[0].strip() or None
 
-        # Try to extract location from container text
-        location = None
-        if container is not None:
-            loc_match = re.search(r"(?:Location|Where|Camp|at)\s*[:\-]?\s*([A-Z][^\n,]{3,50})", container.get_text(), re.IGNORECASE)
-            if loc_match:
-                location = loc_match.group(1).strip()
+        start_date, end_date = _parse_date_range(current_date_str) if current_date_str else (None, None)
 
         events.append({
             "title": title,
@@ -146,28 +127,6 @@ def _scrape_scoutingevent(url: str, council_name: str, base_url: str) -> list[di
             "url": full_url,
             "location": location,
         })
-
-    # Strategy 2: if nothing found yet, try structured table rows
-    if not events:
-        for row in soup.select("tr, .event-row, .listing-row"):
-            cells = row.find_all(["td", "th", "div"])
-            if len(cells) < 2:
-                continue
-            title_cell = cells[0].get_text(strip=True)
-            date_cell = cells[1].get_text(strip=True) if len(cells) > 1 else ""
-            if not title_cell or len(title_cell) < 4:
-                continue
-            link_el = row.find("a")
-            href = link_el["href"] if link_el and link_el.get("href") else ""
-            full_url = href if href.startswith("http") else base_url + href
-            start_date, end_date = _parse_date_range(date_cell) if date_cell else (None, None)
-            events.append({
-                "title": title_cell,
-                "start_date": start_date,
-                "end_date": end_date,
-                "url": full_url or url,
-                "location": cells[2].get_text(strip=True) if len(cells) > 2 else None,
-            })
 
     logger.info(f"[{council_name}] Found {len(events)} raw events from {url}")
     return events
