@@ -34,13 +34,49 @@ def list_saved_events(session: Session = Depends(get_session), _: User = Depends
 
 @router.get("/scrape")
 def trigger_scrape():
-    """Manually trigger a council scrape. Returns a count of events now in DB."""
-    from ..services.council_scraper import scrape_all_councils
-    from ..database import engine
+    """Scrape councils and return a per-council debug breakdown."""
+    import os
+    import requests
+    from datetime import date
+    from bs4 import BeautifulSoup
+    from ..services.council_scraper import (
+        COUNCILS, HEADERS, _scrape_scoutingevent, scrape_all_councils
+    )
+    today = date.today()
+    report = []
+
+    for cfg in COUNCILS:
+        url = os.getenv(cfg["url_env"], cfg["default_url"])
+        # Check HTTP reachability first
+        try:
+            resp = requests.get(url, headers=HEADERS, timeout=20)
+            http_status = resp.status_code
+            cal_event_count = len(BeautifulSoup(resp.content, "html.parser").select(".cal-event"))
+        except Exception as e:
+            report.append({"council": cfg["name"], "url": url, "error": str(e)})
+            continue
+
+        raw = _scrape_scoutingevent(url, cfg["name"], cfg["base_url"])
+        past = [e for e in raw if e["start_date"] and e["start_date"] < today]
+        future = [e for e in raw if not e["start_date"] or e["start_date"] >= today]
+
+        report.append({
+            "council": cfg["name"],
+            "url": url,
+            "http_status": http_status,
+            "cal_event_elements": cal_event_count,
+            "raw_events_found": len(raw),
+            "filtered_as_past": len(past),
+            "will_be_stored": len(future),
+            "sample": [{"title": e["title"], "start_date": str(e["start_date"]), "url": e["url"]} for e in future[:3]],
+        })
+
     scrape_all_councils()
+    from ..database import engine
     with Session(engine) as s:
-        count = len(s.exec(select(CouncilEvent)).all())
-    return {"scraped": True, "total_events": count}
+        total = len(s.exec(select(CouncilEvent)).all())
+
+    return {"today": str(today), "total_in_db": total, "councils": report}
 
 
 @router.patch("/{event_id}")
