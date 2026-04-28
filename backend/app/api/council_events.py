@@ -32,6 +32,17 @@ def list_saved_events(session: Session = Depends(get_session), _: User = Depends
     ).all()
 
 
+@router.post("/scrape")
+def trigger_scrape(_: User = Depends(get_current_user)):
+    """Manually trigger a council scrape. Returns a count of events now in DB."""
+    from ..services.council_scraper import scrape_all_councils
+    from ..database import engine
+    scrape_all_councils()
+    with Session(engine) as s:
+        count = len(s.exec(select(CouncilEvent)).all())
+    return {"scraped": True, "total_events": count}
+
+
 @router.patch("/{event_id}")
 def update_status(event_id: int, body: StatusUpdate, session: Session = Depends(get_session), _: User = Depends(get_current_user)):
     event = session.get(CouncilEvent, event_id)
@@ -68,17 +79,6 @@ def promote_event(event_id: int, session: Session = Depends(get_session), _: Use
     session.commit()
     session.refresh(event)
     return event
-
-
-@router.post("/scrape")
-def trigger_scrape(_: User = Depends(get_current_user)):
-    """Manually trigger a council scrape. Returns a count of events now in DB."""
-    from ..services.council_scraper import scrape_all_councils
-    from ..database import engine
-    scrape_all_councils()
-    with Session(engine) as s:
-        count = len(s.exec(select(CouncilEvent)).all())
-    return {"scraped": True, "total_events": count}
 
 
 @router.delete("/{event_id}", status_code=204)
