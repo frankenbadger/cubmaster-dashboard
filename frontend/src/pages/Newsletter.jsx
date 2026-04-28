@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '../hooks/useAuth'
 
 const MONTH_NAMES = ['January','February','March','April','May','June',
@@ -8,6 +8,98 @@ const INPUT_STYLE = {
   width: '100%', padding: '6px 8px', borderRadius: 6,
   border: '0.5px solid var(--border)', background: 'var(--bg)',
   color: 'var(--text)', fontSize: 13,
+}
+
+function LogoUploader({ onUploaded }) {
+  const [info, setInfo] = useState(null)   // {exists, filename, size_kb}
+  const [uploading, setUploading] = useState(false)
+  const [error, setError] = useState('')
+  const fileRef = useRef()
+
+  useEffect(() => { loadInfo() }, [])
+
+  async function loadInfo() {
+    try {
+      const { data } = await api.get('/newsletters/logo')
+      setInfo(data)
+    } catch {}
+  }
+
+  async function handleFile(file) {
+    if (!file) return
+    setError('')
+    setUploading(true)
+    const form = new FormData()
+    form.append('file', file)
+    try {
+      await api.post('/newsletters/logo', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+      await loadInfo()
+      if (onUploaded) onUploaded()
+    } catch (e) {
+      setError(e?.response?.data?.detail || 'Upload failed')
+    } finally {
+      setUploading(false)
+      if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  async function removeLogo() {
+    if (!window.confirm('Remove the pack logo?')) return
+    try {
+      await api.delete('/newsletters/logo')
+      setInfo({ exists: false })
+      if (onUploaded) onUploaded()
+    } catch {}
+  }
+
+  return (
+    <div>
+      <input ref={fileRef} type="file" accept=".png,.jpg,.jpeg,.gif,.svg,.webp"
+        style={{ display: 'none' }} onChange={e => handleFile(e.target.files[0])} />
+
+      {info?.exists ? (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <img
+            src="/api/newsletters/logo/file"
+            alt="Pack logo"
+            style={{ maxHeight: 56, maxWidth: 100, objectFit: 'contain',
+              border: '0.5px solid var(--border)', borderRadius: 6, padding: 4, background: '#fff' }}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 12, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {info.filename}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-secondary)' }}>{info.size_kb} KB</div>
+          </div>
+          <button className="btn" style={{ fontSize: 11, padding: '4px 8px' }}
+            onClick={() => fileRef.current?.click()} disabled={uploading}>
+            Replace
+          </button>
+          <button className="btn btn-danger" style={{ fontSize: 11, padding: '4px 8px' }}
+            onClick={removeLogo}>
+            Remove
+          </button>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ fontSize: 12, color: 'var(--text-secondary)', fontStyle: 'italic', flex: 1 }}>
+            No logo uploaded — using the CSS diamond placeholder
+          </div>
+          <button className="btn btn-primary" style={{ fontSize: 12, padding: '5px 10px', whiteSpace: 'nowrap' }}
+            onClick={() => fileRef.current?.click()} disabled={uploading}>
+            {uploading ? 'Uploading…' : 'Upload Logo'}
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <div style={{ marginTop: 6, fontSize: 12, color: '#C62828' }}>{error}</div>
+      )}
+      <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-secondary)' }}>
+        PNG, JPG, SVG, or WebP · max 4 MB · stored once, used in all newsletters
+      </div>
+    </div>
+  )
 }
 
 function SectionLabel({ children }) {
@@ -170,6 +262,12 @@ export default function Newsletter() {
       {/* ── Editor panel ── */}
       <div style={{ flex: '0 0 420px', minWidth: 0 }}>
         <h1 style={{ fontSize: 20, fontWeight: 500, marginBottom: '1rem' }}>Newsletter Generator</h1>
+
+        {/* Logo */}
+        <div className="card" style={{ marginBottom: '0.75rem' }}>
+          <SectionLabel>Pack Logo</SectionLabel>
+          <LogoUploader onUploaded={refreshPreview} />
+        </div>
 
         {/* Month/year selector */}
         <div className="card" style={{ marginBottom: '0.75rem' }}>

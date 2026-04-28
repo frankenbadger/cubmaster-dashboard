@@ -1,11 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import HTMLResponse, Response
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.responses import HTMLResponse, Response, StreamingResponse
 from sqlmodel import Session, select
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
 import json
 import os
+import base64
+import io
+import glob
 
 from ..database import get_session, Newsletter, Den
 from .auth import get_current_user, User
@@ -14,6 +17,9 @@ router = APIRouter()
 
 PACK_NUMBER = os.getenv("PACK_NUMBER", "44")
 PACK_LOCATION = os.getenv("PACK_LOCATION", "Philipsburg, PA")
+LOGO_DIR = "/data/logo"
+LOGO_STEM = "pack_logo"
+ALLOWED_LOGO_EXTS = {"png", "jpg", "jpeg", "gif", "svg", "webp"}
 
 MONTH_NAMES = ["January", "February", "March", "April", "May", "June",
                "July", "August", "September", "October", "November", "December"]
@@ -101,6 +107,91 @@ def download_newsletter(year: int, month: int, session: Session = Depends(get_se
     )
 
 
+def _find_logo_path() -> Optional[str]:
+    """Return the path to the stored pack logo, or None if none uploaded."""
+    os.makedirs(LOGO_DIR, exist_ok=True)
+    for ext in ALLOWED_LOGO_EXTS:
+        p = os.path.join(LOGO_DIR, f"{LOGO_STEM}.{ext}")
+        if os.path.isfile(p):
+            return p
+    return None
+
+
+def _logo_data_uri() -> Optional[str]:
+    """Read the logo file and return a data URI for embedding in HTML, or None."""
+    path = _find_logo_path()
+    if not path:
+        return None
+    ext = path.rsplit(".", 1)[-1].lower()
+    mime = {
+        "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
+        "gif": "image/gif", "svg": "image/svg+xml", "webp": "image/webp",
+    }.get(ext, "image/png")
+    with open(path, "rb") as f:
+        b64 = base64.b64encode(f.read()).decode()
+    return f"data:{mime};base64,{b64}"
+
+
+@router.get("/logo")
+def get_logo_info(_: User = Depends(get_current_user)):
+    path = _find_logo_path()
+    if not path:
+        return {"exists": False}
+    ext = path.rsplit(".", 1)[-1].lower()
+    size = os.path.getsize(path)
+    return {"exists": True, "filename": os.path.basename(path), "size_kb": round(size / 1024, 1), "ext": ext}
+
+
+@router.get("/logo/file")
+def get_logo_file(_: User = Depends(get_current_user)):
+    path = _find_logo_path()
+    if not path:
+        raise HTTPException(404, "No logo uploaded")
+    ext = path.rsplit(".", 1)[-1].lower()
+    mime = {
+        "png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg",
+        "gif": "image/gif", "svg": "image/svg+xml", "webp": "image/webp",
+    }.get(ext, "image/png")
+    with open(path, "rb") as f:
+        data = f.read()
+    return StreamingResponse(io.BytesIO(data), media_type=mime)
+
+
+@router.post("/logo", status_code=200)
+async def upload_logo(file: UploadFile = File(...), _: User = Depends(get_current_user)):
+    filename = file.filename or "logo"
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    if ext not in ALLOWED_LOGO_EXTS:
+        raise HTTPException(400, f"Unsupported file type. Use: {', '.join(sorted(ALLOWED_LOGO_EXTS))}")
+    data = await file.read()
+    if len(data) > 4 * 1024 * 1024:
+        raise HTTPException(400, "Logo file must be under 4 MB")
+    os.makedirs(LOGO_DIR, exist_ok=True)
+    # Remove any existing logo files (any extension)
+    for old in glob.glob(os.path.join(LOGO_DIR, f"{LOGO_STEM}.*")):
+        try:
+            os.remove(old)
+        except Exception:
+            pass
+    dest = os.path.join(LOGO_DIR, f"{LOGO_STEM}.{ext}")
+    with open(dest, "wb") as f:
+        f.write(data)
+    return {"saved": True, "filename": os.path.basename(dest), "size_kb": round(len(data) / 1024, 1)}
+
+
+@router.delete("/logo", status_code=204)
+def delete_logo(_: User = Depends(get_current_user)):
+    removed = False
+    for old in glob.glob(os.path.join(LOGO_DIR, f"{LOGO_STEM}.*")):
+        try:
+            os.remove(old)
+            removed = True
+        except Exception:
+            pass
+    if not removed:
+        raise HTTPException(404, "No logo to delete")
+
+
 def _safe_json(val, default):
     if not val:
         return default
@@ -180,6 +271,15 @@ def _render_newsletter(nl: Optional[Newsletter], dens: list, year: int, month: i
         band_html = '<div class="band-url" style="color:#aaa;font-style:italic;">Band URL not set</div>'
 
     month_name = MONTH_NAMES[month]
+
+    # ── Logo ──────────────────────────────────────────────────────────────────
+    logo_uri = _logo_data_uri()
+    if logo_uri:
+        logo_html = f'<img src="{logo_uri}" alt="Pack {PACK_NUMBER} logo" style="max-height:90px;max-width:120px;object-fit:contain;display:block;">'
+    else:
+        logo_html = """<div class="diamond-wrap">
+          <div class="diamond"><div class="diamond-inner">CUB<br>SCOUTS</div></div>
+        </div>"""
 
     # ── Section heading bar helper (rendered inline) ───────────────────────────
     # Used as: {sh("UPCOMING EVENTS")}
@@ -536,11 +636,7 @@ body{{
   <!-- Header -->
   <div class="header">
     <div class="header-logo">
-      <div class="diamond-wrap">
-        <div class="diamond">
-          <div class="diamond-inner">CUB<br>SCOUTS</div>
-        </div>
-      </div>
+      {logo_html}
     </div>
     <div class="header-right">
       <div class="header-tagline">Pack {PACK_NUMBER} &nbsp;·&nbsp; {PACK_LOCATION}</div>
