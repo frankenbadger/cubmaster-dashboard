@@ -32,7 +32,7 @@ def list_saved_events(session: Session = Depends(get_session), _: User = Depends
     ).all()
 
 
-@router.post("/scrape")
+@router.get("/scrape")
 def trigger_scrape(_: User = Depends(get_current_user)):
     """Manually trigger a council scrape. Returns a count of events now in DB."""
     from ..services.council_scraper import scrape_all_councils
