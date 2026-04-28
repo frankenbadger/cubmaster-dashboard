@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from .database import init_db
 from .scheduler import start_scheduler
 from .api import auth, users, dens, tasks, events, reports, agenda, council_events, documents
+from .api import outings, newsletters
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -35,6 +36,8 @@ app.include_router(reports.router,        prefix="/api/reports",        tags=["r
 app.include_router(agenda.router,         prefix="/api/agenda",         tags=["agenda"])
 app.include_router(council_events.router, prefix="/api/council-events", tags=["council-events"])
 app.include_router(documents.router,      prefix="/api/documents",      tags=["documents"])
+app.include_router(outings.router,        prefix="/api/outings",        tags=["outings"])
+app.include_router(newsletters.router,    prefix="/api/newsletters",    tags=["newsletters"])
 
 @app.get("/health")
 def health():

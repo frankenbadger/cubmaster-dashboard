@@ -1,21 +1,27 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuthStore } from '../hooks/useAuth'
 
 export default function Layout() {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
+  const location = useLocation()
+  const wideRoutes = ['/newsletter']
+  const isWide = wideRoutes.some(r => location.pathname.startsWith(r))
 
   const handleLogout = () => { logout(); navigate('/login') }
 
   const nav = [
-    { to: '/',          label: 'Dashboard' },
-    { to: '/dens',      label: 'Dens'      },
-    { to: '/agenda',    label: 'Agenda'    },
-    { to: '/report',    label: 'Report'    },
-    { to: '/calendar',  label: 'Calendar'  },
-    { to: '/contacts',  label: 'Contacts'  },
-    { to: '/radar',     label: 'Radar'     },
-    { to: '/docs',      label: 'Docs'      },
+    { to: '/',            label: 'Dashboard'   },
+    { to: '/dens',        label: 'Dens'        },
+    { to: '/agenda',      label: 'Agenda'      },
+    { to: '/report',      label: 'Report'      },
+    { to: '/calendar',    label: 'Calendar'    },
+    { to: '/contacts',    label: 'Contacts'    },
+    { to: '/radar',       label: 'Radar'       },
+    { to: '/docs',        label: 'Docs'        },
+    { to: '/outings',     label: 'Outings'     },
+    { to: '/newsletter',  label: 'Newsletter'  },
+    { to: '/tasks',       label: 'Tasks'       },
     ...(user?.role === 'cubmaster' ? [{ to: '/users', label: 'Users' }] : []),
   ]
 
@@ -43,7 +49,7 @@ export default function Layout() {
           </button>
         </div>
       </header>
-      <main style={{ flex: 1, padding: '1rem', maxWidth: 700, margin: '0 auto', width: '100%' }}>
+      <main style={{ flex: 1, padding: '1rem', maxWidth: isWide ? 1400 : 700, margin: '0 auto', width: '100%' }}>
         <Outlet />
       </main>
     </div>

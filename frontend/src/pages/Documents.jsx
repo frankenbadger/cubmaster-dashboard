@@ -48,6 +48,8 @@ export default function Documents() {
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [dragOver, setDragOver] = useState(false)
+  const [search, setSearch] = useState('')
+  const [typeFilter, setTypeFilter] = useState('')
   const fileRef = useRef()
 
   useEffect(() => { loadList() }, [])
@@ -82,7 +84,13 @@ export default function Documents() {
       const { data } = await api.post('/documents/parse', form, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
-      setDocs(ds => [{ id: data.id, filename: data.filename, event_name: data.event_name, start_date: data.start_date, uploaded_at: data.uploaded_at }, ...ds])
+      setDocs(ds => [{
+        id: data.id, filename: data.filename, event_name: data.event_name,
+        event_type: data.event_type, start_date: data.start_date,
+        uploaded_at: data.uploaded_at,
+        source_file_path: data.source_file_path,
+        handout_file_path: data.handout_file_path,
+      }, ...ds])
       setFullDocs(fd => ({ ...fd, [data.id]: data }))
     } catch (err) {
       setUploadError(err?.response?.data?.detail || 'Upload failed. Check the file and try again.')
@@ -96,27 +104,48 @@ export default function Documents() {
     try {
       const { data } = await api.patch(`/documents/${id}`, patch)
       setFullDocs(fd => ({ ...fd, [id]: data }))
-      setDocs(ds => ds.map(d => d.id === id ? { ...d, event_name: data.event_name, start_date: data.start_date } : d))
+      setDocs(ds => ds.map(d => d.id === id ? {
+        ...d, event_name: data.event_name, event_type: data.event_type, start_date: data.start_date,
+      } : d))
     } catch {}
   }
 
   async function deleteDoc(id) {
-    if (!window.confirm('Delete this document? This cannot be undone.')) return
+    if (!window.confirm('Delete this document and its files? This cannot be undone.')) return
     await api.delete(`/documents/${id}`)
     setDocs(ds => ds.filter(d => d.id !== id))
     setFullDocs(fd => { const copy = { ...fd }; delete copy[id]; return copy })
   }
 
-  async function downloadHandout(doc) {
+  async function downloadHandout(doc, regenerate = false) {
     try {
-      const resp = await api.get(`/documents/${doc.id}/handout`, { responseType: 'blob' })
-      const url = window.URL.createObjectURL(new Blob([resp.data]))
+      const url = `/documents/${doc.id}/handout${regenerate ? '?regenerate=true' : ''}`
+      const resp = await api.get(url, { responseType: 'blob' })
+      const blobUrl = window.URL.createObjectURL(new Blob([resp.data]))
       const a = document.createElement('a')
-      a.href = url
+      a.href = blobUrl
       a.download = `${(doc.event_name || 'handout').replace(/\s+/g, '_')}_Handout.docx`
       document.body.appendChild(a)
       a.click()
-      window.URL.revokeObjectURL(url)
+      window.URL.revokeObjectURL(blobUrl)
+      document.body.removeChild(a)
+      // Refresh doc to get updated handout_file_path
+      const r = await api.get(`/documents/${doc.id}`)
+      setFullDocs(fd => ({ ...fd, [doc.id]: r.data }))
+      setDocs(ds => ds.map(d => d.id === doc.id ? { ...d, handout_file_path: r.data.handout_file_path } : d))
+    } catch {}
+  }
+
+  async function downloadSource(doc) {
+    try {
+      const resp = await api.get(`/documents/${doc.id}/source`, { responseType: 'blob' })
+      const blobUrl = window.URL.createObjectURL(new Blob([resp.data]))
+      const a = document.createElement('a')
+      a.href = blobUrl
+      a.download = doc.filename
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(blobUrl)
       document.body.removeChild(a)
     } catch {}
   }
@@ -126,6 +155,15 @@ export default function Documents() {
     const days = differenceInDays(new Date(d + 'T12:00:00'), new Date())
     return days <= 14 ? '#C62828' : 'var(--text)'
   }
+
+  // Gather unique event types for filter dropdown
+  const eventTypes = [...new Set(docs.map(d => d.event_type).filter(Boolean))]
+
+  const filtered = docs.filter(d => {
+    const matchSearch = !search || (d.event_name || d.filename || '').toLowerCase().includes(search.toLowerCase())
+    const matchType = !typeFilter || d.event_type === typeFilter
+    return matchSearch && matchType
+  })
 
   return (
     <div>
@@ -168,17 +206,52 @@ export default function Documents() {
         </div>
       )}
 
+      {/* Search / filter bar */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: '1rem', flexWrap: 'wrap' }}>
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search by event name…"
+          style={{
+            flex: 1, minWidth: 160, padding: '6px 10px', borderRadius: 8,
+            border: '0.5px solid var(--border)', background: 'var(--bg)',
+            color: 'var(--text)', fontSize: 13,
+          }}
+        />
+        {eventTypes.length > 0 && (
+          <select
+            value={typeFilter}
+            onChange={e => setTypeFilter(e.target.value)}
+            style={{
+              padding: '6px 10px', borderRadius: 8, border: '0.5px solid var(--border)',
+              background: 'var(--bg)', color: 'var(--text)', fontSize: 13,
+            }}
+          >
+            <option value="">All types</option>
+            {eventTypes.map(t => <option key={t}>{t}</option>)}
+          </select>
+        )}
+      </div>
+
       {!loading && docs.length === 0 && (
         <div className="card" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-secondary)' }}>
           No documents yet. Upload a camp packet or event flyer to get started.
         </div>
       )}
 
-      {docs.map(summary => {
+      {filtered.map(summary => {
         const doc = fullDocs[summary.id]
+        const hasSource = !!(summary.source_file_path || doc?.source_file_path)
+        const hasHandout = !!(summary.handout_file_path || doc?.handout_file_path)
+
         if (!doc) return (
           <div key={summary.id} className="card" style={{ marginBottom: '0.75rem', opacity: 0.6 }}>
-            <div style={{ fontWeight: 500 }}>{summary.event_name || summary.filename}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ fontWeight: 500 }}>{summary.event_name || summary.filename}</div>
+              <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
+                {hasSource ? '📎 Source saved' : '📎 No source file'}
+              </span>
+            </div>
           </div>
         )
 
@@ -191,16 +264,27 @@ export default function Documents() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 600, fontSize: 16 }}>{doc.event_name || doc.filename}</div>
-                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                  {doc.event_type && <span style={{ marginRight: 8 }}>{doc.event_type}</span>}
-                  Uploaded {format(new Date(doc.uploaded_at), 'MMM d, yyyy')}
-                  {doc.uploaded_by && ` by ${doc.uploaded_by}`}
+                <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                  {doc.event_type && <span>{doc.event_type}</span>}
+                  <span>Uploaded {format(new Date(doc.uploaded_at), 'MMM d, yyyy')}{doc.uploaded_by && ` by ${doc.uploaded_by}`}</span>
+                  <span style={{ fontSize: 11 }}>{hasSource ? '📎 Source saved' : '📎 No source file'}</span>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
                 <button className="btn btn-primary" style={{ fontSize: 12, padding: '5px 12px' }}
                   onClick={() => downloadHandout(summary)}>
-                  Download Handout
+                  ↓ Handout
+                </button>
+                {hasSource && (
+                  <button className="btn" style={{ fontSize: 12, padding: '5px 10px' }}
+                    onClick={() => downloadSource(summary)}>
+                    ↓ Original
+                  </button>
+                )}
+                <button className="btn" style={{ fontSize: 12, padding: '5px 10px' }}
+                  onClick={() => downloadHandout(summary, true)}
+                  title="Regenerate handout from current data">
+                  ↺ Regenerate
                 </button>
                 <button className="btn btn-danger" style={{ fontSize: 12, padding: '5px 10px' }}
                   onClick={() => deleteDoc(doc.id)}>

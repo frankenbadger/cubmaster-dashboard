@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { api } from '../hooks/useAuth'
 import { format } from 'date-fns'
 
@@ -20,6 +21,7 @@ export default function Dashboard() {
   const [toggling, setToggling] = useState({})
   const [events, setEvents] = useState([])
   const [dens, setDens] = useState([])
+  const navigate = useNavigate()
 
   useEffect(() => {
     api.get(`/tasks/${year}/${month}`).then(r => setTasks(r.data)).catch(() => {})
@@ -62,22 +64,39 @@ export default function Dashboard() {
       </div>
 
       <div className="card">
-        <div className="card-title">What needs attention this month</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '.75rem' }}>
+          <div className="card-title" style={{ margin: 0 }}>What needs attention this month</div>
+          <button
+            className="btn"
+            style={{ fontSize: 11, padding: '3px 8px' }}
+            onClick={() => navigate('/tasks')}
+          >
+            View All →
+          </button>
+        </div>
         {tasks.length === 0 && (
           <p style={{ fontSize: 13, color: 'var(--text-secondary)', padding: '8px 0' }}>Loading tasks…</p>
         )}
         {urgentFirst.map(task => (
-          <div key={task.id} onClick={() => !toggling[task.id] && toggleTask(task)}
+          <div key={task.id}
             style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '9px 0',
-              borderBottom: '0.5px solid var(--border)', cursor: 'pointer',
+              borderBottom: '0.5px solid var(--border)',
               opacity: task.done ? 0.45 : 1 }}>
-            <div style={{ width: 20, height: 20, borderRadius: 4, border: '0.5px solid var(--border)',
-              background: task.done ? '#EAF3DE' : 'transparent', flexShrink: 0, marginTop: 1,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#2E7D32' }}>
+            <div
+              onClick={() => !toggling[task.id] && toggleTask(task)}
+              style={{ width: 20, height: 20, borderRadius: 4, border: '0.5px solid var(--border)',
+                background: task.done ? '#EAF3DE' : 'transparent', flexShrink: 0, marginTop: 1,
+                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#2E7D32',
+                cursor: 'pointer' }}>
               {task.done ? '✓' : ''}
             </div>
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 14, textDecoration: task.done ? 'line-through' : 'none' }}>{task.label}</div>
+              <div
+                style={{ fontSize: 14, textDecoration: task.done ? 'line-through' : 'none', cursor: 'pointer' }}
+                onClick={() => navigate(`/tasks?highlight=${task.id}`)}
+              >
+                {task.label}
+              </div>
               <div style={{ fontSize: 11, marginTop: 2, color: task.urgent ? '#C62828' : 'var(--text-secondary)', fontWeight: task.urgent ? 600 : 400 }}>
                 {task.urgent ? `! ${task.tag}` : task.tag}
               </div>

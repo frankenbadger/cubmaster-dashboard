@@ -10,6 +10,11 @@ def init_db():
     SQLModel.metadata.create_all(engine)
     _migrate_db()
     _seed_dens()
+    _ensure_storage_dirs()
+
+def _ensure_storage_dirs():
+    for path in ["/data/documents/uploads", "/data/documents/handouts"]:
+        os.makedirs(path, exist_ok=True)
 
 def _migrate_db():
     """Add columns that may be missing from databases created before a schema change."""
@@ -24,6 +29,13 @@ def _migrate_db():
         "ALTER TABLE monthlyreport ADD COLUMN extra_sections TEXT",
         "ALTER TABLE monthlyreport ADD COLUMN last_meeting_name TEXT",
         "ALTER TABLE monthlyreport ADD COLUMN potential_outings TEXT",
+        # Feature 2: Document Storage
+        "ALTER TABLE parseddocument ADD COLUMN source_file_path TEXT",
+        "ALTER TABLE parseddocument ADD COLUMN handout_file_path TEXT",
+        # Feature 4: Tasks notes/subtasks
+        "ALTER TABLE monthlytask ADD COLUMN notes TEXT",
+        "ALTER TABLE monthlytask ADD COLUMN subtasks TEXT",
+        "ALTER TABLE monthlytask ADD COLUMN due_reminder TEXT",
     ]
     with engine.connect() as conn:
         for sql in migrations:
@@ -52,56 +64,56 @@ def _seed_dens():
 # ── Monthly task templates ────────────────────────────────────────────────────
 
 MONTH_TASKS_TEMPLATE = {
-    8:  [{"label": "Check in with all 6 den leaders",          "tag": "Week 1",     "urgent": False},
-         {"label": "Review Scoutbook — advancements pending?", "tag": "Week 1",     "urgent": False},
-         {"label": "Confirm pack meeting date & location",      "tag": "Week 1",     "urgent": False},
-         {"label": "Recruitment signup night at school",        "tag": "Critical",   "urgent": True},
-         {"label": "Annual pack calendar shared with families", "tag": "Week 2",     "urgent": False}],
-    9:  [{"label": "Kickoff pack meeting — welcome everyone",  "tag": "Pack meeting","urgent": False},
-         {"label": "Confirm all 6 den leaders are set",        "tag": "Week 1",     "urgent": False},
-         {"label": "Popcorn sale kickoff announced",           "tag": "Fundraiser", "urgent": False},
-         {"label": "Follow up with recruitment leads",         "tag": "Recruitment","urgent": True}],
-    10: [{"label": "Popcorn sale — push final week",           "tag": "Fundraiser", "urgent": True},
-         {"label": "Check advancement progress with all DLs",  "tag": "Advancement","urgent": False},
-         {"label": "Fall outing / Trunk-or-Treat planned",     "tag": "Event",      "urgent": False},
-         {"label": "Pinewood Derby kits distributed",          "tag": "Dec prep",   "urgent": False}],
-    11: [{"label": "Scouting for Food service project",        "tag": "Service",    "urgent": False},
-         {"label": "Rechartering — start roster review",       "tag": "Admin",      "urgent": True},
-         {"label": "Mid-year committee budget check",          "tag": "Finances",   "urgent": False},
-         {"label": "Advancement check-in with all DLs",        "tag": "Advancement","urgent": False}],
-    0:  [{"label": "Recharter submitted to council",           "tag": "Admin",      "urgent": True},
-         {"label": "Pinewood Derby — race day!",               "tag": "Event",      "urgent": False},
-         {"label": "Holiday party / pack celebration",         "tag": "Event",      "urgent": False},
-         {"label": "Scoutbook fully updated before year-end",  "tag": "Admin",      "urgent": False}],
-    1:  [{"label": "New year kickoff — review calendar",       "tag": "Week 1",     "urgent": False},
-         {"label": "Mid-year advancement check all dens",      "tag": "Advancement","urgent": False},
-         {"label": "Summer camp — start promoting",            "tag": "Camp",       "urgent": True},
-         {"label": "Blue & Gold planning begins",              "tag": "Event",      "urgent": False}],
-    2:  [{"label": "Blue & Gold Banquet",                      "tag": "Big event",  "urgent": True},
-         {"label": "Summer camp registration — push hard",     "tag": "Camp",       "urgent": True},
-         {"label": "Winter outing",                            "tag": "Event",      "urgent": False},
-         {"label": "Scout anniversary month — celebrate!",     "tag": "Recognition","urgent": False}],
-    3:  [{"label": "Spring recruitment planning locked in",    "tag": "Recruitment","urgent": True},
-         {"label": "Camp deadlines — follow up families",      "tag": "Camp",       "urgent": True},
-         {"label": "Check AOL crossover timeline with troop",  "tag": "AOL",        "urgent": True},
-         {"label": "Order advancement patches NOW",            "tag": "Urgent",     "urgent": True}],
-    4:  [{"label": "AOL crossover ceremony — the big one",     "tag": "URGENT",     "urgent": True},
-         {"label": "ALL rank advancements awarded",            "tag": "URGENT",     "urgent": True},
-         {"label": "Confirm ALL den leaders returning in fall","tag": "Leadership", "urgent": True},
-         {"label": "Fall recruitment plan finalized",          "tag": "Recruitment","urgent": False},
-         {"label": "Thank-you notes — leaders & volunteers",   "tag": "Recognition","urgent": False}],
-    5:  [{"label": "Summer program running",                   "tag": "Ongoing",    "urgent": False},
-         {"label": "Day camp / resident camp",                 "tag": "Event",      "urgent": False},
-         {"label": "Fall program outline drafted",             "tag": "Planning",   "urgent": False},
-         {"label": "Informal DL check-ins",                    "tag": "Leadership", "urgent": False}],
-    6:  [{"label": "Final summer activity",                    "tag": "Event",      "urgent": False},
-         {"label": "Recruit follow-up before school starts",   "tag": "Recruitment","urgent": True},
-         {"label": "Sept meeting planned & ready",             "tag": "Urgent",     "urgent": True},
-         {"label": "Fall materials, space, calendar — all set","tag": "Admin",      "urgent": False}],
-    7:  [{"label": "Fall kickoff prep done",                   "tag": "Admin",      "urgent": True},
-         {"label": "Families re-engaged",                      "tag": "Outreach",   "urgent": False},
-         {"label": "Den leaders confirmed and briefed",        "tag": "Leadership", "urgent": True},
-         {"label": "Popcorn sale prep",                        "tag": "Fundraiser", "urgent": False}],
+    8:  [{"label": "Check in with all 6 den leaders",          "tag": "Week 1",     "urgent": False, "due_reminder": "Week 1"},
+         {"label": "Review Scoutbook — advancements pending?", "tag": "Week 1",     "urgent": False, "due_reminder": "Week 1"},
+         {"label": "Confirm pack meeting date & location",      "tag": "Week 1",     "urgent": False, "due_reminder": "Week 1"},
+         {"label": "Recruitment signup night at school",        "tag": "Critical",   "urgent": True,  "due_reminder": "Week 2"},
+         {"label": "Annual pack calendar shared with families", "tag": "Week 2",     "urgent": False, "due_reminder": "Week 2"}],
+    9:  [{"label": "Kickoff pack meeting — welcome everyone",  "tag": "Pack meeting","urgent": False, "due_reminder": "Week 1"},
+         {"label": "Confirm all 6 den leaders are set",        "tag": "Week 1",     "urgent": False, "due_reminder": "Week 1"},
+         {"label": "Popcorn sale kickoff announced",           "tag": "Fundraiser", "urgent": False, "due_reminder": "Week 2"},
+         {"label": "Follow up with recruitment leads",         "tag": "Recruitment","urgent": True,  "due_reminder": "Week 3"}],
+    10: [{"label": "Popcorn sale — push final week",           "tag": "Fundraiser", "urgent": True,  "due_reminder": "Week 4"},
+         {"label": "Check advancement progress with all DLs",  "tag": "Advancement","urgent": False, "due_reminder": "Week 2"},
+         {"label": "Fall outing / Trunk-or-Treat planned",     "tag": "Event",      "urgent": False, "due_reminder": "Week 1"},
+         {"label": "Pinewood Derby kits distributed",          "tag": "Dec prep",   "urgent": False, "due_reminder": "Week 3"}],
+    11: [{"label": "Scouting for Food service project",        "tag": "Service",    "urgent": False, "due_reminder": "Week 1"},
+         {"label": "Rechartering — start roster review",       "tag": "Admin",      "urgent": True,  "due_reminder": "Week 1"},
+         {"label": "Mid-year committee budget check",          "tag": "Finances",   "urgent": False, "due_reminder": "Week 2"},
+         {"label": "Advancement check-in with all DLs",        "tag": "Advancement","urgent": False, "due_reminder": "Week 3"}],
+    0:  [{"label": "Recharter submitted to council",           "tag": "Admin",      "urgent": True,  "due_reminder": "Week 1"},
+         {"label": "Pinewood Derby — race day!",               "tag": "Event",      "urgent": False, "due_reminder": "Week 2"},
+         {"label": "Holiday party / pack celebration",         "tag": "Event",      "urgent": False, "due_reminder": "Week 3"},
+         {"label": "Scoutbook fully updated before year-end",  "tag": "Admin",      "urgent": False, "due_reminder": "Week 4"}],
+    1:  [{"label": "New year kickoff — review calendar",       "tag": "Week 1",     "urgent": False, "due_reminder": "Week 1"},
+         {"label": "Mid-year advancement check all dens",      "tag": "Advancement","urgent": False, "due_reminder": "Week 2"},
+         {"label": "Summer camp — start promoting",            "tag": "Camp",       "urgent": True,  "due_reminder": "Week 2"},
+         {"label": "Blue & Gold planning begins",              "tag": "Event",      "urgent": False, "due_reminder": "Week 3"}],
+    2:  [{"label": "Blue & Gold Banquet",                      "tag": "Big event",  "urgent": True,  "due_reminder": "Week 2"},
+         {"label": "Summer camp registration — push hard",     "tag": "Camp",       "urgent": True,  "due_reminder": "Week 1"},
+         {"label": "Winter outing",                            "tag": "Event",      "urgent": False, "due_reminder": "Week 3"},
+         {"label": "Scout anniversary month — celebrate!",     "tag": "Recognition","urgent": False, "due_reminder": "Week 1"}],
+    3:  [{"label": "Spring recruitment planning locked in",    "tag": "Recruitment","urgent": True,  "due_reminder": "Week 1"},
+         {"label": "Camp deadlines — follow up families",      "tag": "Camp",       "urgent": True,  "due_reminder": "Week 2"},
+         {"label": "Check AOL crossover timeline with troop",  "tag": "AOL",        "urgent": True,  "due_reminder": "Week 1"},
+         {"label": "Order advancement patches NOW",            "tag": "Urgent",     "urgent": True,  "due_reminder": "Week 1"}],
+    4:  [{"label": "AOL crossover ceremony — the big one",     "tag": "URGENT",     "urgent": True,  "due_reminder": "Week 2"},
+         {"label": "ALL rank advancements awarded",            "tag": "URGENT",     "urgent": True,  "due_reminder": "Week 1"},
+         {"label": "Confirm ALL den leaders returning in fall","tag": "Leadership", "urgent": True,  "due_reminder": "Week 3"},
+         {"label": "Fall recruitment plan finalized",          "tag": "Recruitment","urgent": False, "due_reminder": "Week 4"},
+         {"label": "Thank-you notes — leaders & volunteers",   "tag": "Recognition","urgent": False, "due_reminder": "Week 4"}],
+    5:  [{"label": "Summer program running",                   "tag": "Ongoing",    "urgent": False, "due_reminder": "Week 1"},
+         {"label": "Day camp / resident camp",                 "tag": "Event",      "urgent": False, "due_reminder": "Week 2"},
+         {"label": "Fall program outline drafted",             "tag": "Planning",   "urgent": False, "due_reminder": "Week 3"},
+         {"label": "Informal DL check-ins",                    "tag": "Leadership", "urgent": False, "due_reminder": "Week 4"}],
+    6:  [{"label": "Final summer activity",                    "tag": "Event",      "urgent": False, "due_reminder": "Week 1"},
+         {"label": "Recruit follow-up before school starts",   "tag": "Recruitment","urgent": True,  "due_reminder": "Week 2"},
+         {"label": "Sept meeting planned & ready",             "tag": "Urgent",     "urgent": True,  "due_reminder": "Week 3"},
+         {"label": "Fall materials, space, calendar — all set","tag": "Admin",      "urgent": False, "due_reminder": "Week 4"}],
+    7:  [{"label": "Fall kickoff prep done",                   "tag": "Admin",      "urgent": True,  "due_reminder": "Week 1"},
+         {"label": "Families re-engaged",                      "tag": "Outreach",   "urgent": False, "due_reminder": "Week 2"},
+         {"label": "Den leaders confirmed and briefed",        "tag": "Leadership", "urgent": True,  "due_reminder": "Week 1"},
+         {"label": "Popcorn sale prep",                        "tag": "Fundraiser", "urgent": False, "due_reminder": "Week 3"}],
 }
 
 
@@ -144,6 +156,9 @@ class MonthlyTask(SQLModel, table=True):
     done: bool = False
     done_by: Optional[str] = None
     done_at: Optional[datetime] = None
+    notes: Optional[str] = None
+    subtasks: Optional[str] = None    # JSON array of {label, done}
+    due_reminder: Optional[str] = None  # "Week 1" | "Week 2" | etc.
 
 
 class CalendarEvent(SQLModel, table=True):
@@ -236,5 +251,55 @@ class ParsedDocument(SQLModel, table=True):
     key_notes: Optional[str] = None      # JSON array stored as string
     family_summary: Optional[str] = None
     raw_text: Optional[str] = None
+    source_file_path: Optional[str] = None
+    handout_file_path: Optional[str] = None
     uploaded_at: datetime = Field(default_factory=datetime.utcnow)
     uploaded_by: Optional[str] = None
+
+
+class Outing(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str
+    outing_type: str  # "Day Trip" | "Overnight" | "Camping" | "Service Project" | "Activity" | "Other"
+    status: str = Field(default="planning")  # "planning" | "confirmed" | "completed" | "cancelled"
+    date_start: Optional[date] = None
+    date_end: Optional[date] = None
+    location_name: Optional[str] = None
+    location_address: Optional[str] = None
+    meeting_time: Optional[str] = None
+    return_time: Optional[str] = None
+    cost_scout: Optional[str] = None
+    cost_adult: Optional[str] = None
+    cost_notes: Optional[str] = None
+    max_participants: Optional[int] = None
+    min_participants: Optional[int] = None
+    transportation: Optional[str] = None
+    gear_needed: Optional[str] = None      # JSON array of strings
+    permission_slip_needed: bool = Field(default=True)
+    permission_slip_notes: Optional[str] = None
+    medical_form_needed: bool = Field(default=False)
+    contact_name: Optional[str] = None
+    contact_phone: Optional[str] = None
+    contact_email: Optional[str] = None
+    reservation_url: Optional[str] = None
+    reservation_confirmation: Optional[str] = None
+    notes: Optional[str] = None
+    checklist: Optional[str] = None       # JSON array of {label, done}
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_by: Optional[str] = None
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Newsletter(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    year: int
+    month: int
+    date_range_label: str = Field(default="")  # e.g. "Dec 2025 – Jan 2026"
+    monthly_notes: Optional[str] = None
+    events: Optional[str] = None              # JSON array of {date, time, name, location}
+    fundraising_items: Optional[str] = None   # JSON array of strings
+    update_items: Optional[str] = None        # JSON array of strings
+    extra_calendar_events: Optional[str] = None  # JSON array
+    band_url: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_by: Optional[str] = None

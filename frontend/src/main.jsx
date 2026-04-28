@@ -12,6 +12,9 @@ import Contacts from './pages/Contacts'
 import Users from './pages/Users'
 import CouncilRadar from './pages/CouncilRadar'
 import Documents from './pages/Documents'
+import Outings from './pages/Outings'
+import Newsletter from './pages/Newsletter'
+import Tasks from './pages/Tasks'
 import Layout from './components/Layout'
 import './index.css'
 
@@ -34,6 +37,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="contacts" element={<Contacts />} />
           <Route path="radar" element={<CouncilRadar />} />
           <Route path="docs" element={<Documents />} />
+          <Route path="outings" element={<Outings />} />
+          <Route path="newsletter" element={<Newsletter />} />
+          <Route path="tasks" element={<Tasks />} />
           <Route path="users" element={<Users />} />
         </Route>
       </Routes>

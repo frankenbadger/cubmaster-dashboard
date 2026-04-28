@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from fastapi.responses import StreamingResponse
 from sqlmodel import Session, select
 from pydantic import BaseModel
@@ -16,6 +16,9 @@ router = APIRouter()
 
 PACK_NUMBER = os.getenv("PACK_NUMBER", "44")
 PACK_LOCATION = os.getenv("PACK_LOCATION", "Philipsburg, PA")
+
+UPLOADS_DIR = "/data/documents/uploads"
+HANDOUTS_DIR = "/data/documents/handouts"
 
 
 class DocumentPatch(BaseModel):
@@ -66,6 +69,11 @@ def _parse_date_field(value) -> Optional[date]:
         return date.fromisoformat(str(value))
     except Exception:
         return None
+
+
+def _safe_filename(doc_id: int, original: str) -> str:
+    safe = "".join(c for c in original if c.isalnum() or c in "._-")[:80]
+    return f"{doc_id}_{safe}"
 
 
 @router.post("/parse", status_code=201)
@@ -123,6 +131,20 @@ async def parse_document(
     session.add(doc)
     session.commit()
     session.refresh(doc)
+
+    # Save original file to storage
+    try:
+        os.makedirs(UPLOADS_DIR, exist_ok=True)
+        save_path = os.path.join(UPLOADS_DIR, _safe_filename(doc.id, filename))
+        with open(save_path, "wb") as f:
+            f.write(data)
+        doc.source_file_path = save_path
+        session.add(doc)
+        session.commit()
+        session.refresh(doc)
+    except Exception:
+        pass  # file save failure is non-fatal
+
     return doc
 
 
@@ -132,8 +154,16 @@ def list_documents(session: Session = Depends(get_session), _: User = Depends(ge
         select(ParsedDocument).order_by(ParsedDocument.uploaded_at.desc())
     ).all()
     return [
-        {"id": d.id, "filename": d.filename, "event_name": d.event_name,
-         "start_date": d.start_date, "uploaded_at": d.uploaded_at}
+        {
+            "id": d.id,
+            "filename": d.filename,
+            "event_name": d.event_name,
+            "event_type": d.event_type,
+            "start_date": d.start_date,
+            "uploaded_at": d.uploaded_at,
+            "source_file_path": d.source_file_path,
+            "handout_file_path": d.handout_file_path,
+        }
         for d in docs
     ]
 
@@ -160,10 +190,29 @@ def patch_document(doc_id: int, patch: DocumentPatch, session: Session = Depends
 
 
 @router.get("/{doc_id}/handout")
-def download_handout(doc_id: int, session: Session = Depends(get_session), _: User = Depends(get_current_user)):
+def download_handout(
+    doc_id: int,
+    regenerate: bool = Query(default=False),
+    session: Session = Depends(get_session),
+    _: User = Depends(get_current_user),
+):
     doc = session.get(ParsedDocument, doc_id)
     if not doc:
         raise HTTPException(404, "Document not found")
+
+    # Serve cached handout if available and not regenerating
+    if not regenerate and doc.handout_file_path and os.path.isfile(doc.handout_file_path):
+        with open(doc.handout_file_path, "rb") as f:
+            buf = io.BytesIO(f.read())
+        buf.seek(0)
+        safe_name = (doc.event_name or "handout").replace(" ", "_")[:40]
+        date_str = str(doc.start_date) if doc.start_date else "undated"
+        filename = f"{safe_name}_{date_str}_Handout.docx"
+        return StreamingResponse(
+            buf,
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
 
     try:
         from docx import Document
@@ -257,10 +306,50 @@ def download_handout(doc_id: int, session: Session = Depends(get_session), _: Us
     date_str = str(doc.start_date) if doc.start_date else "undated"
     filename = f"{safe_name}_{date_str}_Handout.docx"
 
+    # Save handout to disk
+    try:
+        os.makedirs(HANDOUTS_DIR, exist_ok=True)
+        handout_path = os.path.join(HANDOUTS_DIR, f"{doc.id}_{safe_name}_Handout.docx")
+        with open(handout_path, "wb") as f:
+            f.write(buf.getvalue())
+        doc.handout_file_path = handout_path
+        session.add(doc)
+        session.commit()
+    except Exception:
+        pass
+
+    buf.seek(0)
     return StreamingResponse(
         buf,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
+@router.get("/{doc_id}/source")
+def download_source(doc_id: int, session: Session = Depends(get_session), _: User = Depends(get_current_user)):
+    doc = session.get(ParsedDocument, doc_id)
+    if not doc:
+        raise HTTPException(404, "Document not found")
+    if not doc.source_file_path or not os.path.isfile(doc.source_file_path):
+        raise HTTPException(404, "Source file not available")
+
+    ext = doc.filename.rsplit(".", 1)[-1].lower() if "." in doc.filename else "bin"
+    media_types = {
+        "pdf": "application/pdf",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "png": "image/png",
+    }
+    media_type = media_types.get(ext, "application/octet-stream")
+
+    with open(doc.source_file_path, "rb") as f:
+        data = f.read()
+
+    return StreamingResponse(
+        io.BytesIO(data),
+        media_type=media_type,
+        headers={"Content-Disposition": f'attachment; filename="{doc.filename}"'},
     )
 
 
@@ -269,5 +358,12 @@ def delete_document(doc_id: int, session: Session = Depends(get_session), _: Use
     doc = session.get(ParsedDocument, doc_id)
     if not doc:
         raise HTTPException(404, "Document not found")
+    # Delete associated files
+    for path in [doc.source_file_path, doc.handout_file_path]:
+        if path and os.path.isfile(path):
+            try:
+                os.remove(path)
+            except Exception:
+                pass
     session.delete(doc)
     session.commit()
