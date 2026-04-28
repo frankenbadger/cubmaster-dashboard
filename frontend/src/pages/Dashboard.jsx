@@ -12,7 +12,7 @@ function getLastTuesdayOfMonth(year, month) {
   return new Date(year, month, lastDay.getDate() - diff)
 }
 
-export default function Cockpit() {
+export default function Dashboard() {
   const now = new Date()
   const month = now.getMonth()
   const year = now.getFullYear()
@@ -51,7 +51,7 @@ export default function Cockpit() {
   return (
     <div>
       <h1 style={{ fontSize: 20, fontWeight: 500, marginBottom: '1rem' }}>
-        {MONTH_NAMES[month]} Cockpit
+        {MONTH_NAMES[month]} Dashboard
       </h1>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 10, marginBottom: '1rem' }}>

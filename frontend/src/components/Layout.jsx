@@ -8,7 +8,7 @@ export default function Layout() {
   const handleLogout = () => { logout(); navigate('/login') }
 
   const nav = [
-    { to: '/',          label: 'Cockpit'   },
+    { to: '/',          label: 'Dashboard' },
     { to: '/dens',      label: 'Dens'      },
     { to: '/agenda',    label: 'Agenda'    },
     { to: '/report',    label: 'Report'    },

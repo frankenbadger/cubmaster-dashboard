@@ -85,7 +85,7 @@ The app polls this every 2 hours by default (configurable via `ICAL_POLL_INTERVA
 
 ## Features
 
-### Cockpit
+### Dashboard
 - Pack meeting countdown (auto-calculated for last Tuesday of month)
 - Monthly priority task list with urgent items surfaced first
 - Den alert summary — shows dens flagged as needing attention
