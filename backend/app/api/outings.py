@@ -176,6 +176,131 @@ def signup_genius_url(outing_id: int, session: Session = Depends(get_session), _
     }
 
 
+@router.get("/{outing_id}/handout/leaders")
+def download_leaders_handout(outing_id: int, session: Session = Depends(get_session), _: User = Depends(get_current_user)):
+    outing = session.get(Outing, outing_id)
+    if not outing:
+        raise HTTPException(404, "Outing not found")
+
+    try:
+        from docx import Document
+        from docx.shared import Pt, RGBColor
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+    except ImportError:
+        raise HTTPException(500, "python-docx not installed")
+
+    d = Document()
+
+    def fmt_date(dt):
+        return dt.strftime("%B %d, %Y") if dt else ""
+
+    def fmt_dates(s, e):
+        if s and e and s != e:
+            return f"{s.strftime('%B %d')} – {e.strftime('%B %d, %Y')}"
+        return fmt_date(s)
+
+    # Header
+    title_para = d.add_heading(outing.name, 0)
+    title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for run in title_para.runs:
+        run.font.color.rgb = RGBColor(0x00, 0x30, 0x87)
+
+    sub = d.add_paragraph(f"Leaders Handout · {outing.outing_type} · Pack {PACK_NUMBER}")
+    sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    sub.runs[0].italic = True
+    d.add_paragraph("")
+
+    # Full logistics table
+    rows = [
+        ("Date",                  fmt_dates(outing.date_start, outing.date_end)),
+        ("Meeting Time",          outing.meeting_time),
+        ("Return Time",           outing.return_time),
+        ("Location",              outing.location_name),
+        ("Address",               outing.location_address),
+        ("Transportation",        outing.transportation),
+        ("Scout Cost",            outing.cost_scout),
+        ("Adult Cost",            outing.cost_adult),
+        ("Cost Notes",            outing.cost_notes),
+        ("Min Participants",      str(outing.min_participants) if outing.min_participants else None),
+        ("Max Participants",      str(outing.max_participants) if outing.max_participants else None),
+        ("Contact Name",          outing.contact_name),
+        ("Contact Phone",         outing.contact_phone),
+        ("Contact Email",         outing.contact_email),
+        ("Reservation URL",       outing.reservation_url),
+        ("Confirmation #",        outing.reservation_confirmation),
+        ("Permission Slip",       "Required" if outing.permission_slip_needed else "Not required"),
+        ("Medical Form",          "Required" if outing.medical_form_needed else "Not required"),
+    ]
+    rows = [(lbl, val) for lbl, val in rows if val]
+
+    if rows:
+        table = d.add_table(rows=len(rows), cols=2)
+        table.style = "Table Grid"
+        for i, (lbl, val) in enumerate(rows):
+            table.rows[i].cells[0].text = lbl
+            table.rows[i].cells[1].text = val
+            table.rows[i].cells[0].paragraphs[0].runs[0].bold = True
+
+    d.add_paragraph("")
+
+    # Gear list
+    gear = []
+    if outing.gear_needed:
+        try:
+            gear = json.loads(outing.gear_needed)
+        except Exception:
+            pass
+    if gear:
+        d.add_heading("Gear / Supplies to Arrange", 2)
+        for item in gear:
+            if item:
+                d.add_paragraph(str(item), style="List Bullet")
+        d.add_paragraph("")
+
+    # Planning checklist with status
+    checklist = []
+    if outing.checklist:
+        try:
+            checklist = json.loads(outing.checklist)
+        except Exception:
+            pass
+    if checklist:
+        d.add_heading("Planning Checklist", 2)
+        done_count = sum(1 for c in checklist if c.get("done"))
+        status_line = d.add_paragraph(f"{done_count} of {len(checklist)} items complete")
+        status_line.runs[0].italic = True
+        for item in checklist:
+            mark = "☑" if item.get("done") else "☐"
+            p = d.add_paragraph(f"{mark}  {item.get('label', '')}")
+            p.paragraph_format.left_indent = Pt(12)
+            if item.get("done"):
+                p.runs[0].font.color.rgb = RGBColor(0x75, 0x75, 0x75)
+        d.add_paragraph("")
+
+    if outing.notes:
+        d.add_heading("Notes", 2)
+        d.add_paragraph(outing.notes)
+
+    footer = d.add_paragraph(f"Pack {PACK_NUMBER} · {PACK_LOCATION} · Leaders Only")
+    footer.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    footer.runs[0].font.color.rgb = RGBColor(0x99, 0x99, 0x99)
+    footer.runs[0].font.size = Pt(9)
+
+    buf = io.BytesIO()
+    d.save(buf)
+    buf.seek(0)
+
+    safe_name = outing.name.replace(" ", "_")[:40]
+    date_str = str(outing.date_start) if outing.date_start else "undated"
+    filename = f"{safe_name}_Leaders_{date_str}.docx"
+
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @router.get("/{outing_id}/handout")
 def download_handout(outing_id: int, session: Session = Depends(get_session), _: User = Depends(get_current_user)):
     outing = session.get(Outing, outing_id)

@@ -242,17 +242,26 @@ function OutingForm({ outing, onSave, onDelete, onCancel }) {
     setSgModal(data.prefill_text)
   }
 
-  async function handleHandout() {
-    if (!outing?.id) return
-    const resp = await api.get(`/outings/${outing.id}/handout`, { responseType: 'blob' })
+  async function downloadDoc(path, suffix) {
+    const resp = await api.get(path, { responseType: 'blob' })
     const url = window.URL.createObjectURL(new Blob([resp.data]))
     const a = document.createElement('a')
     a.href = url
-    a.download = `${form.name.replace(/\s+/g, '_')}_Info.docx`
+    a.download = `${form.name.replace(/\s+/g, '_')}_${suffix}.docx`
     document.body.appendChild(a)
     a.click()
     window.URL.revokeObjectURL(url)
     document.body.removeChild(a)
+  }
+
+  function handleParentsHandout() {
+    if (!outing?.id) return
+    downloadDoc(`/outings/${outing.id}/handout`, 'Parents')
+  }
+
+  function handleLeadersHandout() {
+    if (!outing?.id) return
+    downloadDoc(`/outings/${outing.id}/handout/leaders`, 'Leaders')
   }
 
   return (
@@ -399,7 +408,8 @@ function OutingForm({ outing, onSave, onDelete, onCancel }) {
         </button>
         {outing?.id && (
           <>
-            <button className="btn" onClick={handleHandout}>Download Info Sheet</button>
+            <button className="btn" onClick={handleParentsHandout}>Parents Handout</button>
+            <button className="btn" onClick={handleLeadersHandout}>Leaders Handout</button>
             <button className="btn" onClick={handleSGClick}>SignupGenius ↗</button>
           </>
         )}
