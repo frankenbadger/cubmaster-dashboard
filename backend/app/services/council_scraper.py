@@ -102,14 +102,17 @@ def _scrape_scoutingevent(url: str, council_name: str, base_url: str) -> list[di
             current_date_str = date_el.get_text(strip=True) if date_el else None
             continue
 
-        title_el = row.select_one(".cal-title a")
-        if not title_el:
+        title_div = row.select_one(".cal-title")
+        if not title_div:
             continue
-        title = title_el.get_text(strip=True)
+        # scoutingevent.com uses self-closing <a .../> tags; Python's html.parser
+        # treats them as empty, leaving the title text as a sibling node in the div.
+        # Get text from the div, and href from whatever <a> is present.
+        title = title_div.get_text(strip=True)
         if not title or len(title) < 3:
             continue
-
-        href = title_el.get("href", "")
+        link_el = title_div.select_one("a")
+        href = link_el.get("href", "") if link_el else ""
         full_url = href if href.startswith("http") else base_url + href
 
         loc_el = row.select_one(".cal-loc-content")
